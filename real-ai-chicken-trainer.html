@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real AI Chicken Trainer</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 900px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.85em;
+            margin-bottom: 20px;
+        }
+
+        .progress-container {
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .instruction {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+            font-size: 1.05em;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .image-item {
+            position: relative;
+            cursor: pointer;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 3px solid transparent;
+            background: #f5f5f5;
+        }
+
+        .image-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .image-item.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .image-item canvas {
+            width: 100%;
+            height: 180px;
+            display: block;
+        }
+
+        .image-item .checkmark {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .image-item.selected .checkmark {
+            display: flex;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-container {
+            margin-top: 30px;
+        }
+
+        .result-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .result-item canvas {
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .result-prediction {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .result-prediction.correct {
+            color: #28a745;
+        }
+
+        .result-prediction.incorrect {
+            color: #dc3545;
+        }
+
+        .confidence-bar {
+            background: #e0e0e0;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .accuracy-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .accuracy-summary h2 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+
+        .training-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-size: 0.95em;
+        }
+
+        .epoch-info {
+            margin-top: 10px;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .loss-display {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐔 Real AI Chicken Trainer</h1>
+        <p class="subtitle">Train a real TensorFlow.js neural network!</p>
+        <div style="text-align: center;">
+            <span class="ai-badge">🧠 Powered by TensorFlow.js</span>
+        </div>
+
+        <div id="trainingPhase">
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%">
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+                <div class="progress-text">Round <span id="currentRound">1</span> of 20</div>
+            </div>
+
+            <div class="instruction">
+                📸 Select all images that contain <strong>chickens</strong>, then click "Submit Selection"
+            </div>
+
+            <div class="image-grid" id="imageGrid"></div>
+
+            <div class="button-container">
+                <button id="submitBtn" onclick="submitSelection()">Submit Selection</button>
+            </div>
+        </div>
+
+        <div id="testingPhase" class="hidden">
+            <div class="loading" id="loadingTest">
+                <div>🧠 Training the neural network...</div>
+                <div class="training-info">
+                    <strong>Training Progress:</strong>
+                    <div class="epoch-info" id="epochInfo">Preparing data...</div>
+                    <div class="loss-display" id="lossDisplay">Loss: -- | Accuracy: --</div>
+                </div>
+            </div>
+
+            <div id="testResults" class="hidden">
+                <div class="accuracy-summary">
+                    <h2 id="accuracyScore">0%</h2>
+                    <p>Neural Network Accuracy</p>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Model trained on your labeled data</p>
+                </div>
+
+                <h3 style="margin-bottom: 20px; color: #667eea;">AI Performance on Test Images:</h3>
+                <div id="resultsContainer"></div>
+
+                <div class="button-container" style="margin-top: 30px;">
+                    <button onclick="location.reload()">Train Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Feature extraction functions - convert canvas images to feature vectors
+        function extractFeatures(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Extract color features
+            let redSum = 0, greenSum = 0, blueSum = 0;
+            let redVar = 0, greenVar = 0, blueVar = 0;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                redSum += data[i];
+                greenSum += data[i + 1];
+                blueSum += data[i + 2];
+            }
+            
+            const pixelCount = data.length / 4;
+            const redMean = redSum / pixelCount;
+            const greenMean = greenSum / pixelCount;
+            const blueMean = blueSum / pixelCount;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                redVar += Math.pow(data[i] - redMean, 2);
+                greenVar += Math.pow(data[i + 1] - greenMean, 2);
+                blueVar += Math.pow(data[i + 2] - blueMean, 2);
+            }
+            
+            // Extract edge features (simple gradient)
+            let edgeStrength = 0;
+            for (let y = 1; y < canvas.height - 1; y++) {
+                for (let x = 1; x < canvas.width - 1; x++) {
+                    const idx = (y * canvas.width + x) * 4;
+                    const idxRight = (y * canvas.width + (x + 1)) * 4;
+                    const idxDown = ((y + 1) * canvas.width + x) * 4;
+                    
+                    const dx = Math.abs(data[idx] - data[idxRight]);
+                    const dy = Math.abs(data[idx] - data[idxDown]);
+                    edgeStrength += Math.sqrt(dx * dx + dy * dy);
+                }
+            }
+            
+            // Normalize features
+            return [
+                redMean / 255,
+                greenMean / 255,
+                blueMean / 255,
+                Math.sqrt(redVar / pixelCount) / 255,
+                Math.sqrt(greenVar / pixelCount) / 255,
+                Math.sqrt(blueVar / pixelCount) / 255,
+                edgeStrength / (canvas.width * canvas.height * 100)
+            ];
+        }
+
+        // Image generation functions
+        function drawChicken(ctx, width, height, seed) {
+            const random = (min, max) => {
+                seed = (seed * 9301 + 49297) % 233280;
+                return min + (seed / 233280) * (max - min);
+            };
+
+            ctx.fillStyle = `hsl(${random(80, 120)}, ${random(30, 60)}%, ${random(70, 90)}%)`;
+            ctx.fillRect(0, 0, width, height);
+
+            const bodyX = width / 2;
+            const bodyY = height * 0.6;
+            
+            ctx.fillStyle = `hsl(${random(0, 40)}, ${random(50, 80)}%, ${random(60, 80)}%)`;
+            ctx.beginPath();
+            ctx.ellipse(bodyX, bodyY, width * 0.25, height * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(bodyX + width * 0.05, bodyY - height * 0.25, height * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFB347';
+            ctx.beginPath();
+            ctx.moveTo(bodyX + width * 0.15, bodyY - height * 0.25);
+            ctx.lineTo(bodyX + width * 0.22, bodyY - height * 0.23);
+            ctx.lineTo(bodyX + width * 0.15, bodyY - height * 0.21);
+            ctx.fill();
+
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(bodyX + width * 0.08, bodyY - height * 0.27, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#E74C3C';
+            ctx.beginPath();
+            ctx.arc(bodyX + width * 0.05, bodyY - height * 0.35, height * 0.05, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#FFB347';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(bodyX - width * 0.1, bodyY + height * 0.15);
+            ctx.lineTo(bodyX - width * 0.1, bodyY + height * 0.3);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(bodyX + width * 0.1, bodyY + height * 0.15);
+            ctx.lineTo(bodyX + width * 0.1, bodyY + height * 0.3);
+            ctx.stroke();
+
+            ctx.fillStyle = `hsl(${random(0, 40)}, ${random(50, 80)}%, ${random(40, 60)}%)`;
+            ctx.beginPath();
+            ctx.arc(bodyX - width * 0.25, bodyY - height * 0.05, height * 0.15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawNonChicken(ctx, width, height, seed, type) {
+            const random = (min, max) => {
+                seed = (seed * 9301 + 49297) % 233280;
+                return min + (seed / 233280) * (max - min);
+            };
+
+            ctx.fillStyle = `hsl(${random(0, 360)}, ${random(30, 60)}%, ${random(70, 90)}%)`;
+            ctx.fillRect(0, 0, width, height);
+
+            if (type === 'dog') {
+                ctx.fillStyle = `hsl(${random(20, 40)}, ${random(40, 60)}%, ${random(40, 60)}%)`;
+                ctx.beginPath();
+                ctx.ellipse(width/2, height*0.6, width*0.3, height*0.25, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(width/2, height*0.35, height*0.15, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(width*0.35, height*0.3, width*0.08, height*0.15, -0.3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(width*0.65, height*0.3, width*0.08, height*0.15, 0.3, 0, Math.PI*2);
+                ctx.fill();
+            } else if (type === 'cat') {
+                ctx.fillStyle = `hsl(${random(0, 40)}, ${random(10, 30)}%, ${random(30, 70)}%)`;
+                ctx.beginPath();
+                ctx.ellipse(width/2, height*0.6, width*0.25, height*0.2, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(width/2, height*0.4, height*0.13, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(width*0.4, height*0.3);
+                ctx.lineTo(width*0.35, height*0.15);
+                ctx.lineTo(width*0.45, height*0.25);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(width*0.6, height*0.3);
+                ctx.lineTo(width*0.65, height*0.15);
+                ctx.lineTo(width*0.55, height*0.25);
+                ctx.fill();
+            } else if (type === 'tree') {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(width*0.43, height*0.5, width*0.14, height*0.4);
+                ctx.fillStyle = '#228B22';
+                ctx.beginPath();
+                ctx.arc(width/2, height*0.35, width*0.2, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(width*0.4, height*0.4, width*0.15, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(width*0.6, height*0.4, width*0.15, 0, Math.PI*2);
+                ctx.fill();
+            } else if (type === 'flower') {
+                ctx.fillStyle = '#228B22';
+                ctx.fillRect(width*0.47, height*0.5, width*0.06, height*0.4);
+                const petalColors = ['#FF69B4', '#FF1493', '#FFC0CB', '#FFB6C1'];
+                ctx.fillStyle = petalColors[Math.floor(random(0, 4))];
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI * 2 / 6) * i;
+                    const x = width/2 + Math.cos(angle) * width*0.12;
+                    const y = height*0.35 + Math.sin(angle) * height*0.12;
+                    ctx.beginPath();
+                    ctx.arc(x, y, width*0.08, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(width/2, height*0.35, width*0.05, 0, Math.PI*2);
+                ctx.fill();
+            } else {
+                for (let i = 0; i < 5; i++) {
+                    ctx.fillStyle = `hsl(${random(0, 360)}, ${random(50, 100)}%, ${random(40, 70)}%)`;
+                    ctx.beginPath();
+                    ctx.arc(random(0, width), random(0, height), random(20, 50), 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        let currentRound = 1;
+        let trainingData = [];
+        let selectedImages = new Set();
+        let currentRoundData = null;
+        let model = null;
+
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        function generateRound() {
+            selectedImages.clear();
+            
+            const numChickens = Math.floor(Math.random() * 3) + 2;
+            const roundImages = [];
+            
+            for (let i = 0; i < numChickens; i++) {
+                roundImages.push({
+                    type: 'chicken',
+                    seed: Math.floor(Math.random() * 10000),
+                    id: `chicken-${i}-${Date.now()}-${Math.random()}`
+                });
+            }
+            
+            const nonChickenTypes = ['dog', 'cat', 'tree', 'flower', 'abstract'];
+            for (let i = 0; i < 6 - numChickens; i++) {
+                roundImages.push({
+                    type: nonChickenTypes[Math.floor(Math.random() * nonChickenTypes.length)],
+                    seed: Math.floor(Math.random() * 10000),
+                    id: `other-${i}-${Date.now()}-${Math.random()}`
+                });
+            }
+            
+            const shuffled = shuffleArray(roundImages);
+            
+            const roundData = {
+                images: shuffled,
+                correctAnswers: new Set(shuffled.filter(img => img.type === 'chicken').map(img => img.id))
+            };
+            
+            displayImages(shuffled);
+            return roundData;
+        }
+
+        function createCanvas(imgData) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            
+            if (imgData.type === 'chicken') {
+                drawChicken(ctx, 300, 300, imgData.seed);
+            } else {
+                drawNonChicken(ctx, 300, 300, imgData.seed, imgData.type);
+            }
+            
+            return canvas;
+        }
+
+        function displayImages(images) {
+            const grid = document.getElementById('imageGrid');
+            grid.innerHTML = '';
+            
+            images.forEach((imgData, index) => {
+                const div = document.createElement('div');
+                div.className = 'image-item';
+                
+                const canvas = createCanvas(imgData);
+                div.appendChild(canvas);
+                
+                const checkmark = document.createElement('div');
+                checkmark.className = 'checkmark';
+                checkmark.textContent = '✓';
+                div.appendChild(checkmark);
+                
+                div.onclick = () => toggleSelection(div, imgData.id);
+                grid.appendChild(div);
+            });
+        }
+
+        function toggleSelection(element, imgId) {
+            element.classList.toggle('selected');
+            if (selectedImages.has(imgId)) {
+                selectedImages.delete(imgId);
+            } else {
+                selectedImages.add(imgId);
+            }
+        }
+
+        function submitSelection() {
+            if (selectedImages.size === 0) {
+                alert('Please select at least one image!');
+                return;
+            }
+
+            currentRoundData.images.forEach(imgData => {
+                const canvas = createCanvas(imgData);
+                const features = extractFeatures(canvas);
+                
+                trainingData.push({
+                    id: imgData.id,
+                    isChicken: imgData.type === 'chicken',
+                    userSelected: selectedImages.has(imgData.id),
+                    features: features,
+                    data: imgData
+                });
+            });
+
+            currentRound++;
+            
+            if (currentRound <= 20) {
+                updateProgress();
+                currentRoundData = generateRound();
+            } else {
+                startTesting();
+            }
+        }
+
+        function updateProgress() {
+            const progress = ((currentRound - 1) / 20) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressPercent').textContent = Math.round(progress) + '%';
+            document.getElementById('currentRound').textContent = currentRound;
+        }
+
+        async function startTesting() {
+            document.getElementById('trainingPhase').classList.add('hidden');
+            document.getElementById('testingPhase').classList.remove('hidden');
+
+            await trainModel();
+        }
+
+        async function trainModel() {
+            // Prepare training data
+            const X = trainingData.map(d => d.features);
+            const y = trainingData.map(d => d.userSelected ? 1 : 0);
+            
+            const xs = tf.tensor2d(X);
+            const ys = tf.tensor2d(y, [y.length, 1]);
+            
+            // Create neural network
+            model = tf.sequential({
+                layers: [
+                    tf.layers.dense({ inputShape: [7], units: 16, activation: 'relu' }),
+                    tf.layers.dropout({ rate: 0.2 }),
+                    tf.layers.dense({ units: 8, activation: 'relu' }),
+                    tf.layers.dense({ units: 1, activation: 'sigmoid' })
+                ]
+            });
+            
+            model.compile({
+                optimizer: tf.train.adam(0.01),
+                loss: 'binaryCrossentropy',
+                metrics: ['accuracy']
+            });
+            
+            // Train the model
+            const epochs = 50;
+            await model.fit(xs, ys, {
+                epochs: epochs,
+                batchSize: 16,
+                shuffle: true,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        document.getElementById('epochInfo').textContent = 
+                            `Epoch ${epoch + 1}/${epochs}`;
+                        document.getElementById('lossDisplay').textContent = 
+                            `Loss: ${logs.loss.toFixed(4)} | Accuracy: ${(logs.acc * 100).toFixed(2)}%`;
+                    }
+                }
+            });
+            
+            xs.dispose();
+            ys.dispose();
+            
+            await runTests();
+        }
+
+        async function runTests() {
+            const testImages = [];
+            
+            for (let i = 0; i < 5; i++) {
+                testImages.push({
+                    type: 'chicken',
+                    seed: Math.floor(Math.random() * 10000),
+                    id: `test-chicken-${i}`
+                });
+            }
+            
+            const nonChickenTypes = ['dog', 'cat', 'tree', 'flower', 'abstract'];
+            for (let i = 0; i < 5; i++) {
+                testImages.push({
+                    type: nonChickenTypes[Math.floor(Math.random() * nonChickenTypes.length)],
+                    seed: Math.floor(Math.random() * 10000),
+                    id: `test-other-${i}`
+                });
+            }
+            
+            const shuffledTests = shuffleArray(testImages);
+            const results = [];
+            
+            for (const imgData of shuffledTests) {
+                const canvas = createCanvas(imgData);
+                const features = extractFeatures(canvas);
+                
+                const input = tf.tensor2d([features]);
+                const prediction = await model.predict(input);
+                const predictionValue = (await prediction.data())[0];
+                
+                input.dispose();
+                prediction.dispose();
+                
+                const isActuallyChicken = imgData.type === 'chicken';
+                const predictedChicken = predictionValue > 0.5;
+                
+                results.push({
+                    data: imgData,
+                    actual: isActuallyChicken,
+                    predicted: predictedChicken,
+                    confidence: predictedChicken ? predictionValue : (1 - predictionValue)
+                });
+            }
+
+            displayResults(results);
+        }
+
+        function displayResults(results) {
+            document.getElementById('loadingTest').classList.add('hidden');
+            document.getElementById('testResults').classList.remove('hidden');
+
+            const correct = results.filter(r => r.actual === r.predicted).length;
+            const accuracy = (correct / results.length) * 100;
+            
+            document.getElementById('accuracyScore').textContent = Math.round(accuracy) + '%';
+
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = '';
+
+            results.forEach((result, index) => {
+                const div = document.createElement('div');
+                div.className = 'result-item';
+                
+                // Create a smaller canvas for display
+                const displayCanvas = document.createElement('canvas');
+                displayCanvas.width = 150;
+                displayCanvas.height = 150;
+                const displayCtx = displayCanvas.getContext('2d');
+                
+                // Redraw the image at smaller size
+                if (result.data.type === 'chicken') {
+                    drawChicken(displayCtx, 150, 150, result.data.seed);
+                } else {
+                    drawNonChicken(displayCtx, 150, 150, result.data.seed, result.data.type);
+                }
+                
+                const isCorrect = result.actual === result.predicted;
+                const predictionText = result.predicted ? 'Chicken Detected' : 'Not a Chicken';
+                const actualText = result.actual ? '(Actually: Chicken)' : `(Actually: ${result.data.type})`;
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'result-info';
+                infoDiv.innerHTML = `
+                    <div class="result-prediction ${isCorrect ? 'correct' : 'incorrect'}">
+                        ${isCorrect ? '✓' : '✗'} ${predictionText}
+                    </div>
+                    <div style="color: #666; font-size: 0.9em;">${actualText}</div>
+                    <div style="margin-top: 5px; font-size: 0.9em; color: #888;">
+                        Confidence: ${Math.round(result.confidence * 100)}%
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" style="width: ${result.confidence * 100}%"></div>
+                    </div>
+                `;
+                
+                div.appendChild(displayCanvas);
+                div.appendChild(infoDiv);
+                container.appendChild(div);
+            });
+        }
+
+        // Initialize
+        console.log('TensorFlow.js version:', tf.version.tfjs);
+        currentRoundData = generateRound();
+    </script>
+</body>
+</html>
